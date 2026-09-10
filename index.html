@@ -417,7 +417,7 @@
             <div id="kpiTopShortLegPlayer"><span class="kpi-sub-highlight">-</span></div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Höchster Punkteschnitt</div>
+            <div class="kpi-label" id="kpiLabelAvg">Höchstes gespieltes AVG</div>
             <div class="kpi-value" id="kpiTopAvg">-</div>
             <div id="kpiTopAvgPlayer"><span class="kpi-sub-highlight">-</span></div>
         </div>
@@ -621,6 +621,7 @@
     let currentMode = "einzel";
     let einzelData = [];
     let doppelData = [];
+    let globalMaxLegAvg = { val: 0, name: "-", team: "1" };
     let loggedInPlayerName = "";
     let currentUserIsAdmin = false;
 
@@ -690,7 +691,6 @@
     }
 
     async function fetchSupabaseMatches() {
-        // Exakt auf die Tabellenstruktur aus deinem Supabase-Screenshot angepasst:
         const teamConfigs = [
             { teamNum: "1", tableSpieltage: "spieltage_t1", tableMatches: "matches_t1", tableScoring: "scoring_stats_t1" },
             { teamNum: "2", tableSpieltage: "spieltage_t2", tableMatches: "matches_t2", tableScoring: "scoring_stats_t2" },
@@ -755,6 +755,7 @@
     function processRankingsFromMatches(allMatches) {
         let einzelMap = {};
         let doppelMap = {};
+        let maxLegAvgObj = { val: 0, name: "-", team: "1" };
 
         allMatches.forEach(m => {
             let isDoppel = m.block.toLowerCase().includes("doppel") || m.spieler.includes("/");
@@ -778,6 +779,19 @@
                 if (!pName) return;
 
                 let trueTeam = PLAYER_TEAM_MAP[pName] || m.tableTeamNum;
+
+                // Berechnung des ungefähren Leg-AVGs bei gewonnenen Legs (501 / Darts * 3)
+                if (isWin && legsWon > 0 && dartsList.length > 0) {
+                    for (let i = 0; i < Math.min(legsWon, dartsList.length); i++) {
+                        let dCount = dartsList[i];
+                        if (dCount > 0) {
+                            let legAvg = (501 / dCount) * 3;
+                            if (legAvg > maxLegAvgObj.val) {
+                                maxLegAvgObj = { val: legAvg, name: pName, team: trueTeam };
+                            }
+                        }
+                    }
+                }
 
                 if (!einzelMap[pName]) {
                     einzelMap[pName] = {
@@ -824,6 +838,18 @@
                 let firstPlayer = pairParts[0];
                 let trueTeam = PLAYER_TEAM_MAP[firstPlayer] || m.tableTeamNum;
 
+                if (isWin && legsWon > 0 && dartsList.length > 0) {
+                    for (let i = 0; i < Math.min(legsWon, dartsList.length); i++) {
+                        let dCount = dartsList[i];
+                        if (dCount > 0) {
+                            let legAvg = (501 / dCount) * 3;
+                            if (legAvg > maxLegAvgObj.val) {
+                                maxLegAvgObj = { val: legAvg, name: pairName, team: trueTeam };
+                            }
+                        }
+                    }
+                }
+
                 if (!doppelMap[pairName]) {
                     doppelMap[pairName] = {
                         id: 'd_' + Math.random().toString(36).substr(2, 9),
@@ -844,7 +870,6 @@
 
                 if (m.avg > 0) d.avgs.push(m.avg);
                 
-                // 180er im Doppel zuordnen
                 if (m.s180 > 0) {
                     d.h180_total += m.s180;
                     let cacheKey180 = `tvk_doppel_180_${pairName}_spieltag_${m.spieltag}`;
@@ -860,7 +885,6 @@
                     d.lastMatch180Detail = `${m.s180}x (${savedPlayer})`;
                 }
 
-                // High Finish im Doppel zuordnen
                 if (m.hf > d.highFinish_total) {
                     d.highFinish_total = m.hf;
                     let cacheKeyHF = `tvk_doppel_hf_${pairName}_spieltag_${m.spieltag}_${m.hf}`;
@@ -889,6 +913,8 @@
                 }
             }
         });
+
+        globalMaxLegAvg = maxLegAvgObj;
 
         einzelData = Object.values(einzelMap).map(p => {
             let avgVal = p.avgs.length > 0 ? (p.avgs.reduce((a, b) => a + b, 0) / p.avgs.length) : 0;
@@ -1046,14 +1072,13 @@
             setKpiPlayerGroup('kpiTopShortLegPlayer', [], 'Kein Short Leg');
         }
 
-        let maxAvg = Math.max(...dataset.map(x => x.avg || 0));
-        if (maxAvg > 0) {
-            document.getElementById('kpiTopAvg').textContent = maxAvg.toFixed(2);
-            let top = dataset.filter(x => x.avg === maxAvg);
-            setKpiPlayerGroup('kpiTopAvgPlayer', top, 'Keine Daten');
+        // Anzeige für Höchstes gespieltes AVG in einem gewonnenen Leg
+        if (globalMaxLegAvg.val > 0) {
+            document.getElementById('kpiTopAvg').textContent = globalMaxLegAvg.val.toFixed(2);
+            document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight badge-${globalMaxLegAvg.team}">${globalMaxLegAvg.name} (TVK ${globalMaxLegAvg.team})</span>`;
         } else {
             document.getElementById('kpiTopAvg').textContent = '-';
-            setKpiPlayerGroup('kpiTopAvgPlayer', [], 'Keine Daten');
+            document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight">Keine Daten</span>`;
         }
     }
 
