@@ -417,7 +417,7 @@
             <div id="kpiTopShortLegPlayer"><span class="kpi-sub-highlight">-</span></div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label" id="kpiLabelAvg">Höchstes gespieltes AVG</div>
+            <div class="kpi-label">Höchstes gespieltes AVG</div>
             <div class="kpi-value" id="kpiTopAvg">-</div>
             <div id="kpiTopAvgPlayer"><span class="kpi-sub-highlight">-</span></div>
         </div>
@@ -780,17 +780,9 @@
 
                 let trueTeam = PLAYER_TEAM_MAP[pName] || m.tableTeamNum;
 
-                // Berechnung des ungefähren Leg-AVGs bei gewonnenen Legs (501 / Darts * 3)
-                if (isWin && legsWon > 0 && dartsList.length > 0) {
-                    for (let i = 0; i < Math.min(legsWon, dartsList.length); i++) {
-                        let dCount = dartsList[i];
-                        if (dCount > 0) {
-                            let legAvg = (501 / dCount) * 3;
-                            if (legAvg > maxLegAvgObj.val) {
-                                maxLegAvgObj = { val: legAvg, name: pName, team: trueTeam };
-                            }
-                        }
-                    }
+                // Höchstes Match-AVG über m.avg ermitteln
+                if (m.avg > maxLegAvgObj.val) {
+                    maxLegAvgObj = { val: m.avg, name: pName, team: trueTeam };
                 }
 
                 if (!einzelMap[pName]) {
@@ -838,16 +830,8 @@
                 let firstPlayer = pairParts[0];
                 let trueTeam = PLAYER_TEAM_MAP[firstPlayer] || m.tableTeamNum;
 
-                if (isWin && legsWon > 0 && dartsList.length > 0) {
-                    for (let i = 0; i < Math.min(legsWon, dartsList.length); i++) {
-                        let dCount = dartsList[i];
-                        if (dCount > 0) {
-                            let legAvg = (501 / dCount) * 3;
-                            if (legAvg > maxLegAvgObj.val) {
-                                maxLegAvgObj = { val: legAvg, name: pairName, team: trueTeam };
-                            }
-                        }
-                    }
+                if (m.avg > maxLegAvgObj.val) {
+                    maxLegAvgObj = { val: m.avg, name: pairName, team: trueTeam };
                 }
 
                 if (!doppelMap[pairName]) {
@@ -1072,7 +1056,7 @@
             setKpiPlayerGroup('kpiTopShortLegPlayer', [], 'Kein Short Leg');
         }
 
-        // Anzeige für Höchstes gespieltes AVG in einem gewonnenen Leg
+        // Anzeige für Höchstes gespieltes AVG (Match-AVG aus DB)
         if (globalMaxLegAvg.val > 0) {
             document.getElementById('kpiTopAvg').textContent = globalMaxLegAvg.val.toFixed(2);
             document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight badge-${globalMaxLegAvg.team}">${globalMaxLegAvg.name} (TVK ${globalMaxLegAvg.team})</span>`;
