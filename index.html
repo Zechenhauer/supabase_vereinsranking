@@ -690,10 +690,11 @@
     }
 
     async function fetchSupabaseMatches() {
+        // Exakt auf die Tabellenstruktur aus deinem Supabase-Screenshot angepasst:
         const teamConfigs = [
-            { teamNum: "1", tableSpieltage: "spieltage", tableMatches: "matches", tableScoring: "scoring_stats" },
+            { teamNum: "1", tableSpieltage: "spieltage_t1", tableMatches: "matches_t1", tableScoring: "scoring_stats_t1" },
             { teamNum: "2", tableSpieltage: "spieltage_t2", tableMatches: "matches_t2", tableScoring: "scoring_stats_t2" },
-            { teamNum: "3", tableSpieltage: "spieltage_t3", tableMatches: "matches_t3", tableScoring: "scoring_stats_t3" },
+            { teamNum: "3", tableSpieltage: "spieltage", tableMatches: "matches", tableScoring: "scoring_stats" },
             { teamNum: "4", tableSpieltage: "spieltage_t4", tableMatches: "matches_t4", tableScoring: "scoring_stats_t4" }
         ];
 
