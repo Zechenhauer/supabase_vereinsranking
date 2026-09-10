@@ -574,6 +574,30 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_yXEueWILvAq-Vm2VfTuYyg_BIQeE1KK';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Feste Zuordnung der Spieler zu ihren Stammteams ("1", "2", "3" oder "4")
+    const PLAYER_TEAM_MAP = {
+        // 1. Mannschaft
+        "Patrick Seitz": "1", "Tim Siegel": "1", "Sascha Bien": "1", "Dominik Helmke": "1",
+        "Stefan Melcher": "1", "Jan Krabbe": "1", "Fabio Padovano": "1", "Dirk Kraus": "1",
+        "Robert Geyer": "1", "Joel Wielinski": "1", "Denis Vanzidler": "1",
+        
+        // 2. Mannschaft
+        "Florian Weindorf": "2", "Daniel Simanowitz": "2", "Danny Voß": "2", "Markus Elgersma": "2",
+        "Markus Thiele": "2", "Christian Schreiber": "2", "Dominik Herz": "2", "Thomas Franzen": "2",
+        "Philip Möller": "2", "Holger Weberpold": "2", "Andre Pogoda": "2",
+        
+        // 3. Mannschaft
+        "Jürgen Schützendorf": "3", "Niklas Weichert": "3", "Wolfram Senger": "3", "Ludger Schledorn": "3",
+        "Thomas Kliver": "3", "Markus Ginsel": "3", "Andreas Denner": "3", "Markus Lenz": "3",
+        "Florian Hartwich": "3", "Michael Müller": "3", "Lars Neutag": "3", "Yannick Steffes": "3",
+        "Leon Gerber": "3", "Gregor Marek": "3", "Holger Overmeyer": "3",
+        
+        // 4. Mannschaft
+        "Britta Roghmans": "4", "Scott Jonen": "4", "Björn Mentzen": "4", "Lars Hufen": "4",
+        "Jesper Neutag": "4", "Brian Müller": "4", "Leon Overmann": "4", "Mark Bock": "4",
+        "Dirk Grunert": "4", "Friedhelm Schmidt-Cremer": "4", "Lucas Mentzen": "4"
+    };
+
     const DEFAULT_USERS = [
         { name: "Jürgen Schützendorf", pass: "admin123", isAdmin: true },
         { name: "Niklas Weichert", pass: "niklas003", isAdmin: false },
@@ -695,7 +719,7 @@
                             let scoring = (m[cfg.tableScoring] && m[cfg.tableScoring].length > 0) ? m[cfg.tableScoring][0] : {};
                             
                             rawMatches.push({
-                                team: cfg.teamNum,
+                                tableTeamNum: cfg.teamNum,
                                 spieltag: st.spieltag_nummer,
                                 datum: st.datum,
                                 gegnerTeam: st.gegner_team,
@@ -757,10 +781,12 @@
                 let pName = m.spieler.trim();
                 if (!pName) return;
 
+                let trueTeam = PLAYER_TEAM_MAP[pName] || m.tableTeamNum;
+
                 if (!einzelMap[pName]) {
                     einzelMap[pName] = {
                         id: 'e_' + Math.random().toString(36).substr(2, 9),
-                        name: pName, team: m.team, matches: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0,
+                        name: pName, team: trueTeam, matches: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0,
                         avgs: [], h180: 0, highFinish: 0, shortLegsList: [], totalDartsWonLegs: 0,
                         c60: 0, c80: 0, c100: 0, c140: 0, matchLog: []
                     };
@@ -795,10 +821,12 @@
                 let pairName = m.spieler.trim();
                 if (!pairName) return;
 
+                let trueTeam = m.tableTeamNum;
+
                 if (!doppelMap[pairName]) {
                     doppelMap[pairName] = {
                         id: 'd_' + Math.random().toString(36).substr(2, 9),
-                        pairName: pairName, team: m.team, matches: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0,
+                        pairName: pairName, team: trueTeam, matches: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0,
                         avgs: [], h180_total: 0, highFinish_total: 0, shortLegsList: [], totalDartsWonLegs: 0,
                         c60: 0, c80: 0, c100: 0, c140: 0,
                         opponentTeam: m.gegnerTeam, lastMatchScore: m.ergebnis, lastMatchDarts: dartsList,
@@ -831,7 +859,6 @@
             }
         });
 
-        // Finales Processing Einzel
         einzelData = Object.values(einzelMap).map(p => {
             let avgVal = p.avgs.length > 0 ? (p.avgs.reduce((a, b) => a + b, 0) / p.avgs.length) : 0;
             p.shortLegsList.sort((a, b) => a - b);
@@ -853,7 +880,6 @@
             };
         });
 
-        // Finales Processing Doppel
         doppelData = Object.values(doppelMap).map(d => {
             let avgVal = d.avgs.length > 0 ? (d.avgs.reduce((a, b) => a + b, 0) / d.avgs.length) : 0;
             d.shortLegsList.sort((a, b) => a - b);
