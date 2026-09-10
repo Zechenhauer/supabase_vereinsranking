@@ -820,7 +820,6 @@
                 pairParts.sort();
                 let pairName = pairParts.join(" / ");
 
-                // Korrektur: Team über den ersten Spieler aus der PLAYER_TEAM_MAP ermitteln (falls nicht gefunden, Fallback auf Tabellen-Nummer)
                 let firstPlayer = pairParts[0];
                 let trueTeam = PLAYER_TEAM_MAP[firstPlayer] || m.tableTeamNum;
 
@@ -828,7 +827,7 @@
                     doppelMap[pairName] = {
                         id: 'd_' + Math.random().toString(36).substr(2, 9),
                         pairName: pairName, team: trueTeam, matches: 0, wins: 0, losses: 0, legsWon: 0, legsLost: 0,
-                        avgs: [], h180_total: 0, highFinish_total: 0, shortLegsList: [], totalDartsWonLegs: 0,
+                        avgs: [], h180_total: 0, h180_player: "", highFinish_total: 0, highFinish_player: "", shortLegsList: [], totalDartsWonLegs: 0,
                         c60: 0, c80: 0, c100: 0, c140: 0,
                         opponentTeam: m.gegnerTeam, lastMatchScore: m.ergebnis, lastMatchDarts: dartsList,
                         lastMatch180Detail: m.s180 > 0 ? `${m.s180}x` : '-', lastMatchHFDetail: m.hf > 0 ? `${m.hf}` : '-'
@@ -843,8 +842,38 @@
                 d.legsLost += legsLost;
 
                 if (m.avg > 0) d.avgs.push(m.avg);
-                d.h180_total += m.s180;
-                if (m.hf > d.highFinish_total) d.highFinish_total = m.hf;
+                
+                // 180er im Doppel zuordnen
+                if (m.s180 > 0) {
+                    d.h180_total += m.s180;
+                    let cacheKey180 = `tvk_doppel_180_${pairName}_spieltag_${m.spieltag}`;
+                    let savedPlayer = localStorage.getItem(cacheKey180);
+                    
+                    if (!savedPlayer) {
+                        let promptText = `Im Doppel "${pairName}" (Spieltag ${m.spieltag}) wurde eine 180 geworfen!\n\nWer von beiden war es?\n1: ${pairParts[0]}\n2: ${pairParts[1]}\n\n(Namen eintragen oder abbrechen für ${pairParts[0]})`;
+                        let chosen = prompt(promptText, pairParts[0]);
+                        savedPlayer = (chosen && chosen.trim() !== "") ? chosen.trim() : pairParts[0];
+                        localStorage.setItem(cacheKey180, savedPlayer);
+                    }
+                    d.h180_player = savedPlayer;
+                    d.lastMatch180Detail = `${m.s180}x (${savedPlayer})`;
+                }
+
+                // High Finish im Doppel zuordnen
+                if (m.hf > d.highFinish_total) {
+                    d.highFinish_total = m.hf;
+                    let cacheKeyHF = `tvk_doppel_hf_${pairName}_spieltag_${m.spieltag}_${m.hf}`;
+                    let savedPlayerHF = localStorage.getItem(cacheKeyHF);
+
+                    if (!savedPlayerHF) {
+                        let promptTextHF = `Im Doppel "${pairName}" (Spieltag ${m.spieltag}) wurde ein High-Finish von ${m.hf} geworfen!\n\nWer von beiden war es?\n1: ${pairParts[0]}\n2: ${pairParts[1]}\n\n(Namen eintragen oder abbrechen für ${pairParts[0]})`;
+                        let chosenHF = prompt(promptTextHF, pairParts[0]);
+                        savedPlayerHF = (chosenHF && chosenHF.trim() !== "") ? chosenHF.trim() : pairParts[0];
+                        localStorage.setItem(cacheKeyHF, savedPlayerHF);
+                    }
+                    d.highFinish_player = savedPlayerHF;
+                    d.lastMatchHFDetail = `${m.hf} (${savedPlayerHF})`;
+                }
 
                 d.c60 += m.s60; d.c80 += m.s80; d.c100 += m.s100; d.c140 += m.s140;
 
@@ -956,8 +985,8 @@
                 let displayName = currentMode === "einzel" ? item.name : item.pairName;
                 
                 if (currentMode === "doppel") {
-                    if (kpiType === "180" && item.h180_player) displayName = item.h180_player;
-                    if (kpiType === "hf" && item.highFinish_player) displayName = item.highFinish_player;
+                    if (kpiType === "180" && item.h180_player) displayName = `${item.h180_player}`;
+                    if (kpiType === "hf" && item.highFinish_player) displayName = `${item.highFinish_player}`;
                 }
 
                 elem.innerHTML = `<span class="kpi-sub-highlight badge-${item.team}">${displayName} (TVK ${item.team})</span>`;
@@ -965,8 +994,8 @@
                 const listItems = topList.map(item => {
                     let displayName = currentMode === "einzel" ? item.name : item.pairName;
                     if (currentMode === "doppel") {
-                        if (kpiType === "180" && item.h180_player) displayName = item.h180_player;
-                        if (kpiType === "hf" && item.highFinish_player) displayName = item.highFinish_player;
+                        if (kpiType === "180" && item.h180_player) displayName = `${item.h180_player}`;
+                        if (kpiType === "hf" && item.highFinish_player) displayName = `${item.highFinish_player}`;
                     }
                     return `<div style="margin: 2px 0;">
                         ${displayName} <span class="team-badge badge-${item.team}" style="font-size:0.65rem; padding: 2px 5px;">TVK ${item.team}</span>
