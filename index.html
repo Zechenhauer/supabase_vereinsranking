@@ -621,7 +621,8 @@
     let currentMode = "einzel";
     let einzelData = [];
     let doppelData = [];
-    let globalMaxMatchAvg = { val: 0, name: "-", team: "1" };
+    let globalMaxEinzelAvg = { val: 0, name: "-", team: "1" };
+    let globalMaxDoppelAvg = { val: 0, name: "-", team: "1" };
     let loggedInPlayerName = "";
     let currentUserIsAdmin = false;
 
@@ -755,7 +756,8 @@
     function processRankingsFromMatches(allMatches) {
         let einzelMap = {};
         let doppelMap = {};
-        let maxMatchAvgObj = { val: 0, name: "-", team: "1" };
+        let maxEinzelObj = { val: 0, name: "-", team: "1" };
+        let maxDoppelObj = { val: 0, name: "-", team: "1" };
 
         allMatches.forEach(m => {
             let isDoppel = m.block.toLowerCase().includes("doppel") || m.spieler.includes("/");
@@ -774,17 +776,14 @@
                 dartsList = m.dartsStr.split(",").map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
             }
 
-            // NEU & DIREKT: Durchsucht die Datenbank-Spalte "avg" aller Teams, aber NUR bei gewonnenen Spielen (isWin)
-            if (isWin && m.avg > maxMatchAvgObj.val) {
-                let pNameClean = isDoppel 
-                    ? m.spieler.trim().split('/').map(s => s.trim()).sort().join(" / ") 
-                    : m.spieler.trim();
-                let trueTeam = PLAYER_TEAM_MAP[isDoppel ? pNameClean.split('/')[0].trim() : pNameClean] || m.tableTeamNum;
-                
-                maxMatchAvgObj = { val: m.avg, name: pNameClean, team: trueTeam };
-            }
-
+            // Getrennte Erfassung für Einzel und Doppel bei gewonnenen Spielen
             if (!isDoppel) {
+                if (isWin && m.avg > maxEinzelObj.val) {
+                    let pName = m.spieler.trim();
+                    let trueTeam = PLAYER_TEAM_MAP[pName] || m.tableTeamNum;
+                    maxEinzelObj = { val: m.avg, name: pName, team: trueTeam };
+                }
+
                 let pName = m.spieler.trim();
                 if (!pName) return;
 
@@ -834,6 +833,10 @@
 
                 let firstPlayer = pairParts[0];
                 let trueTeam = PLAYER_TEAM_MAP[firstPlayer] || m.tableTeamNum;
+
+                if (isWin && m.avg > maxDoppelObj.val) {
+                    maxDoppelObj = { val: m.avg, name: pairName, team: trueTeam };
+                }
 
                 if (!doppelMap[pairName]) {
                     doppelMap[pairName] = {
@@ -899,7 +902,8 @@
             }
         });
 
-        globalMaxLegAvg = maxMatchAvgObj;
+        globalMaxEinzelAvg = maxEinzelObj;
+        globalMaxDoppelAvg = maxDoppelObj;
 
         einzelData = Object.values(einzelMap).map(p => {
             let avgVal = p.avgs.length > 0 ? (p.avgs.reduce((a, b) => a + b, 0) / p.avgs.length) : 0;
@@ -1057,10 +1061,11 @@
             setKpiPlayerGroup('kpiTopShortLegPlayer', [], 'Kein Short Leg');
         }
 
-        // Anzeige für Höchstes gespieltes AVG (direkt aus Datenbankspalte avg bei gewonnenen Matches)
-        if (globalMaxLegAvg.val > 0) {
-            document.getElementById('kpiTopAvg').textContent = globalMaxLegAvg.val.toFixed(2);
-            document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight badge-${globalMaxLegAvg.team}">${globalMaxLegAvg.name} (TVK ${globalMaxLegAvg.team})</span>`;
+        // Trennung für Höchstes gespieltes AVG (Einzel vs. Doppel)
+        const activeAvgObj = currentMode === "einzel" ? globalMaxEinzelAvg : globalMaxDoppelAvg;
+        if (activeAvgObj.val > 0) {
+            document.getElementById('kpiTopAvg').textContent = activeAvgObj.val.toFixed(2);
+            document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight badge-${activeAvgObj.team}">${activeAvgObj.name} (TVK ${activeAvgObj.team})</span>`;
         } else {
             document.getElementById('kpiTopAvg').textContent = '-';
             document.getElementById('kpiTopAvgPlayer').innerHTML = `<span class="kpi-sub-highlight">Keine Daten</span>`;
@@ -1149,7 +1154,7 @@
         filtered.sort((a, b) => {
             if (sortSelect === 'winrate') return compareItems(a, b);
             if (sortSelect === 'avg') return (b.avg || 0) - (a.avg || 0);
-            if (sortSelect === '180') return (b.h180 || b.h180_total || 0) - (b.h180 || b.h180_total || 0); // fixed
+            if (sortSelect === '180') return (b.h180 || b.h180_total || 0) - (a.h180 || a.h180_total || 0);
             if (sortSelect === 'highfinish') return (b.highFinish || b.highFinish_total || 0) - (a.highFinish || a.highFinish_total || 0);
             if (sortSelect === 'shortleg') return (a.shortLeg || 99) - (b.shortLeg || 99);
         });
